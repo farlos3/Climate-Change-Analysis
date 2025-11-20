@@ -45,3 +45,11 @@ cloud_cover_min
 dew_point_2m_mean
 dew_point_2m_max
 dew_point_2m_min
+surface_pressure_mean
+surface_pressure_max
+surface_pressure_min
+winddirection_10m_dominant
+wind_gusts_10m_mean
+wind_speed_10m_mean
+wind_gusts_10m_min
+wind_speed_10m_min
