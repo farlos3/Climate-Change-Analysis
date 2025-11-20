@@ -11,7 +11,7 @@ ALLSKY_SFC_SW_DIFF,All Sky Surface Shortwave Diffuse Irradiance
 ALLSKY_SFC_SW_DIRH,All Sky Surface Shortwave Direct Horizontal Irradiance
 ALLSKY_SFC_SW_DNI,All Sky Surface Shortwave Downward Direct Normal Irradiance
 ALLSKY_SFC_SW_DWN,All Sky Surface Shortwave Downward Irradiance
-ALLSKY_SFC_SW_UP,All Sky Surface Shortwave Upward Irradiance
+ALLSKY_SFC_SW_UP,All Sky Surface Shortwave Upward Irradiancej
 ALLSKY_SFC_UVA,All Sky Surface UVA Irradiance
 ALLSKY_SFC_UVB,All Sky Surface UVB Irradiance
 ALLSKY_SFC_UV_INDEX,All Sky Surface UV Index
