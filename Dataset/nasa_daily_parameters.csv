@@ -1,0 +1,130 @@
+parameter,long_name
+AIRMASS,Air Mass
+ALLSKY_KT,All Sky Insolation Clearness Index
+ALLSKY_NKT,All Sky Normalized Insolation Clearness Index
+ALLSKY_SFC_LW_DWN,All Sky Surface Longwave Downward Irradiance
+ALLSKY_SFC_LW_UP,All Sky Surface Longwave Upward Irradiance
+ALLSKY_SFC_PAR_DIFF,All Sky Surface Diffuse PAR
+ALLSKY_SFC_PAR_DIRH,All Sky Surface Direct Horizontal PAR
+ALLSKY_SFC_PAR_TOT,All Sky Surface Total PAR
+ALLSKY_SFC_SW_DIFF,All Sky Surface Shortwave Diffuse Irradiance
+ALLSKY_SFC_SW_DIRH,All Sky Surface Shortwave Direct Horizontal Irradiance
+ALLSKY_SFC_SW_DNI,All Sky Surface Shortwave Downward Direct Normal Irradiance
+ALLSKY_SFC_SW_DWN,All Sky Surface Shortwave Downward Irradiance
+ALLSKY_SFC_SW_UP,All Sky Surface Shortwave Upward Irradiance
+ALLSKY_SFC_UVA,All Sky Surface UVA Irradiance
+ALLSKY_SFC_UVB,All Sky Surface UVB Irradiance
+ALLSKY_SFC_UV_INDEX,All Sky Surface UV Index
+ALLSKY_SRF_ALB,All Sky Surface Albedo
+AOD_55,Aerosol Optical Depth 55
+AOD_55_ADJ,Adjusted Aerosol Optical Depth 55
+AOD_84,Aerosol Optical Depth 84
+CDD18_3,Cooling Degree Days Above 18.3 C
+CLOUD_AMT,Cloud Amount
+CLOUD_AMT_DAY,Cloud Amount at Daytime
+CLOUD_AMT_NIGHT,Cloud Amount at Nighttime
+CLOUD_OD,Cloud Optical Visible Depth
+CLRSKY_DAYS,Clear Sky Days
+CLRSKY_KT,Clear Sky Insolation Clearness Index
+CLRSKY_NKT,Clear Sky Normalized Insolation Clearness Index
+CLRSKY_SFC_LW_DWN,Clear Sky Surface Longwave Downward Irradiance
+CLRSKY_SFC_LW_UP,Clear Sky Surface Longwave Upward Irradiance
+CLRSKY_SFC_PAR_DIFF,Clear Sky Surface Diffuse PAR
+CLRSKY_SFC_PAR_DIRH,Clear Sky Surface Direct Horizontal PAR
+CLRSKY_SFC_PAR_TOT,Clear Sky Surface Total PAR
+CLRSKY_SFC_SW_DIFF,Clear Sky Surface Shortwave Downward Diffuse Irradiance
+CLRSKY_SFC_SW_DIRH,Clear Sky Surface Shortwave Direct Horizontal Irradiance
+CLRSKY_SFC_SW_DNI,Clear Sky Surface Shortwave Downward Direct Normal Irradiance
+CLRSKY_SFC_SW_DWN,Clear Sky Surface Shortwave Downward Irradiance
+CLRSKY_SFC_SW_UP,Clear Sky Surface Shortwave Upward Irradiance
+CLRSKY_SRF_ALB,Clear Sky Surface Albedo
+DISPH,Zero Plane Displacement Height
+EVLAND,Evaporation Land
+EVPTRNS,Evapotranspiration Energy Flux
+FROST_DAYS,Frost Days
+FRSEAICE,Ice Covered Fraction
+FRSNO,Land Snowcover Fraction
+GWETPROF,Profile Soil Moisture
+GWETROOT,Root Zone Soil Wetness
+GWETTOP,Surface Soil Wetness
+GWM_HEIGHT,GWM Height
+GWM_HEIGHT_ANOMALY,GWM Height Anomaly
+HDD0,Heating Degree Days Below 0 C
+HDD10,Heating Degree Days Below 10 C
+HDD18_3,Heating Degree Days Below 18.3 C
+IMERG_PRECLIQUID_PROB,Probability of Liquid Precipitation
+IMERG_PRECTOT,Total Precipitation
+IMERG_PRECTOT_COUNT,Count of Precipitation Retrievals
+MIDDAY_INSOL,Midday Insolation Incident
+ORIGINAL_ALLSKY_SFC_LW_DWN,All Sky Surface Longwave Downward Irradiance
+ORIGINAL_ALLSKY_SFC_SW_DIFF,All Sky Surface Shortwave Diffuse Irradiance
+ORIGINAL_ALLSKY_SFC_SW_DIRH,All Sky Surface Shortwave Direct Horizontal Irradiance
+ORIGINAL_ALLSKY_SFC_SW_DWN,All Sky Surface Shortwave Downward Irradiance
+ORIGINAL_CLRSKY_SFC_LW_DWN,Clear Sky Surface Longwave Downward Irradiance
+ORIGINAL_CLRSKY_SFC_SW_DWN,Clear Sky Surface Shortwave Downward Irradiance
+PBLTOP,Planetary Boundary Layer Top Pressure
+PRECSNO,Snow Precipitation
+PRECSNOLAND,Snow Precipitation Land
+PRECTOTCORR,Precipitation Corrected
+PS,Surface Pressure
+PSH,Peak Sun Hour
+PW,Precipitable Water
+QV10M,Specific Humidity at 10 Meters
+QV2M,Specific Humidity at 2 Meters
+RH2M,Relative Humidity at 2 Meters
+RHOA,Surface Air Density
+SLP,Sea Level Pressure
+SNODP,Snow Depth
+SRF_ALB_ADJ,Surface Albedo Adjusted
+SZA,Solar Zenith Angle
+T10M,Temperature at 10 Meters
+T10M_MAX,Temperature at 10 Meters Maximum
+T10M_MIN,Temperature at 10 Meters Minimum
+T10M_RANGE,Temperature at 10 Meters Range
+T2M,Temperature at 2 Meters
+T2MDEW,Dew/Frost Point at 2 Meters
+T2MWET,Wet Bulb Temperature at 2 Meters
+T2M_MAX,Temperature at 2 Meters Maximum
+T2M_MIN,Temperature at 2 Meters Minimum
+T2M_RANGE,Temperature at 2 Meters Range
+TO3,Total Column Ozone
+TOA_SW_DNI,Top-Of-Atmosphere Shortwave Direct Normal Radiation
+TOA_SW_DWN,Top-Of-Atmosphere Shortwave Downward Irradiance
+TQV,Total Column Precipitable Water
+TROPPB,Tropopause Pressure based on blended estimate.
+TROPQ,Tropopause Specific Humidity using blended TROPP estimate.
+TROPT,Tropopause Temperature using blended TROPP estimate.
+TS,Earth Skin Temperature
+TSOIL1,Soil Temperatures Layer 1
+TSOIL2,Soil Temperatures Layer 2
+TSOIL3,Soil Temperatures Layer 3
+TSOIL4,Soil Temperatures Layer 4
+TSOIL5,Soil Temperatures Layer 5
+TSOIL6,Soil Temperatures Layer 6
+TSURF,Surface Temperature of Land and Snow
+TS_ADJ,Earth Skin Temperature Adjusted
+TS_MAX,Earth Skin Temperature Maximum
+TS_MIN,Earth Skin Temperature Minimum
+TS_RANGE,Earth Skin Temperature Range
+U10M,Eastward Wind at 10 Meters
+U2M,Eastward Wind at 2 Meters
+U50M,Eastward Wind at 50 Meters
+V10M,Northward Wind at 10 Meters
+V2M,Northward Wind at 2 Meters
+V50M,Northward Wind at 50 Meters
+WD10M,Wind Direction at 10 Meters
+WD2M,Wind Direction at 2 Meters
+WD50M,Wind Direction at 50 Meters
+WS10M,Wind Speed at 10 Meters
+WS10M_MAX,Wind Speed at 10 Meters Maximum
+WS10M_MIN,Wind Speed at 10 Meters Minimum
+WS10M_RANGE,Wind Speed at 10 Meters Range
+WS2M,Wind Speed at 2 Meters
+WS2M_MAX,Wind Speed at 2 Meters Maximum
+WS2M_MIN,Wind Speed at 2 Meters Minimum
+WS2M_RANGE,Wind Speed at 2 Meters Range
+WS50M,Wind Speed at 50 Meters
+WS50M_MAX,Wind Speed at 50 Meters Maximum
+WS50M_MIN,Wind Speed at 50 Meters Minimum
+WS50M_RANGE,Wind Speed at 50 Meters Range
+Z0M,Surface Roughness
