@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+duckdb
+pandas
+numpy
+pyarrow
+fastparquet
+scikit-learn
+joblib
+requests
