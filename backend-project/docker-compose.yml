@@ -1,0 +1,53 @@
+name: Climate-Change-Analysis
+
+services:
+  airflow_init:
+    build:
+      context: ./airflow
+    image: climate-airflow:latest
+    container_name: airflow_init
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - ./airflow/data:/opt/airflow/data
+      - ./models:/opt/airflow/models
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/data/airflow.db
+    command: >
+      bash -c "
+        airflow db migrate &&
+        airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin
+      "
+
+  airflow_standalone:
+    image: climate-airflow:latest
+    container_name: airflow_standalone
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - ./airflow/data:/opt/airflow/data
+      - ./models:/opt/airflow/models
+    ports:
+      - "8090:8080"
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/data/airflow.db
+      - AIRFLOW__LOGGING__REMOTE_LOGGING=False
+      - AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=
+      - AIRFLOW__WEBSERVER__WORKER_REFRESH_BATCH_SIZE=1
+      - AIRFLOW__WEBSERVER__WORKER_REFRESH_INTERVAL=6000
+      - PYTHONPATH=/opt/airflow:/opt/airflow/src
+    command: standalone
+
+  fastapi:
+    build: ./app
+    container_name: fastapi
+    volumes:
+      - ./airflow/data:/app/data
+      - ./src:/app/src
+      - ./models:/app/models
+    ports:
+      - "8000:8000"
