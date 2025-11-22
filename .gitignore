@@ -1,0 +1,3 @@
+backend-project/airflow/data/airflow.db
+backend-project/airflow/data/airflow.db-shm
+backend-project/airflow/data/airflow.db-wal
