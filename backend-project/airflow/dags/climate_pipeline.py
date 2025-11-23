@@ -3,15 +3,42 @@ import os
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.operators.bash import BashOperator
 
 # เพิ่ม src path เข้า Python path
 sys.path.append('/opt/airflow')
 sys.path.append('/opt/airflow/src')
 
-from src.ingestion_power import fetch_power_daily_batch
-from src.prepare_climate import prepare_climate_data
-from src.etl_to_duckdb import load_raw_to_duckdb, load_prepared_to_duckdb
+# Task functions for PythonOperator
+def fetch_power_api_task():
+    """Fetch climate data from NASA POWER API"""
+    from src.ingestion_power import fetch_power_daily_batch
+    result = fetch_power_daily_batch(
+        '/opt/airflow/src/nasa_daily_parameters.csv', 
+        '/opt/airflow/data/raw/power_daily.parquet'
+    )
+    print(f'SUCCESS: {result}')
+    return result
+
+def load_raw_to_duckdb_task():
+    """Load raw data to DuckDB"""
+    from src.etl_to_duckdb import load_raw_to_duckdb
+    result = load_raw_to_duckdb(
+        '/opt/airflow/data/raw/power_daily.parquet', 
+        '/opt/airflow/data/duckdb/climate.duckdb'
+    )
+    print(f'SUCCESS: {result}')
+    return result
+
+
+def load_prepared_to_duckdb_task():
+    """Load prepared data to DuckDB"""
+    from src.etl_to_duckdb import load_prepared_to_duckdb
+    result = load_prepared_to_duckdb(
+        '/opt/airflow/data/prepared/climate_prepared.parquet', 
+        '/opt/airflow/data/duckdb/climate.duckdb'
+    )
+    print(f'SUCCESS: {result}')
+    return result
 
 default_args = {
     'owner': 'climate_team',
@@ -35,66 +62,23 @@ with DAG(
     max_active_tasks=1
 ) as dag:
 
-    ingest_task = BashOperator(
+    ingest_task = PythonOperator(
         task_id="fetch_power_api",
-        bash_command="""
-        cd /opt/airflow && python -c "
-import sys
-sys.path.append('/opt/airflow')
-sys.path.append('/opt/airflow/src')
-from src.ingestion_power import fetch_power_daily_batch
-result = fetch_power_daily_batch('/opt/airflow/src/nasa_daily_parameters.csv', '/opt/airflow/data/raw/power_daily.parquet')
-print(f'SUCCESS: {result}')
-        "
-        """,
+        python_callable=fetch_power_api_task,
         retries=0,
     )
 
-    load_raw_duckdb = BashOperator(
+    load_raw_duckdb = PythonOperator(
         task_id="load_raw_to_duckdb",
-        bash_command="""
-        cd /opt/airflow && python -c "
-import sys
-sys.path.append('/opt/airflow')
-sys.path.append('/opt/airflow/src')
-from src.etl_to_duckdb import load_raw_to_duckdb
-result = load_raw_to_duckdb('/opt/airflow/data/raw/power_daily.parquet', '/opt/airflow/data/duckdb/climate.duckdb')
-print(f'SUCCESS: {result}')
-        "
-        """,
+        python_callable=load_raw_to_duckdb_task,
         retries=0,
     )
 
-    prepare_task = BashOperator(
-        task_id="prepare_climate",
-        bash_command="""
-        cd /opt/airflow && python -c "
-import sys
-sys.path.append('/opt/airflow')
-sys.path.append('/opt/airflow/src')
-from src.prepare_climate import prepare_climate_data
-result = prepare_climate_data('/opt/airflow/data/duckdb/climate.duckdb', '/opt/airflow/data/prepared/climate_prepared.parquet', '/opt/airflow/models/feature_scaler.pkl', 'climate_raw')
-print(f'SUCCESS: {result}')
-        "
-        """,
-        retries=0,
-    )
-
-    load_clean_duckdb = BashOperator(
+    load_clean_duckdb = PythonOperator(
         task_id="load_clean_to_duckdb",
-        bash_command="""
-        cd /opt/airflow && python -c "
-import sys
-sys.path.append('/opt/airflow')
-sys.path.append('/opt/airflow/src')
-from src.etl_to_duckdb import load_prepared_to_duckdb
-result = load_prepared_to_duckdb('/opt/airflow/data/prepared/climate_prepared.parquet', '/opt/airflow/data/duckdb/climate.duckdb')
-print(f'SUCCESS: {result}')
-        "
-        """,
+        python_callable=load_prepared_to_duckdb_task,
         retries=0,
     )
 
     # --- DAG FLOW ---
-    ingest_task >> load_raw_duckdb >> prepare_task >> load_clean_duckdb
-
+    ingest_task >> load_raw_duckdb >> load_clean_duckdb
