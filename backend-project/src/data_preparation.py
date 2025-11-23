@@ -3,8 +3,6 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List
-from sklearn.preprocessing import StandardScaler
-import joblib
 
 
 def prepare_climate_data(
@@ -12,8 +10,7 @@ def prepare_climate_data(
     output_parquet_path: str,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    quality_checks: bool = True,
-    use_existing_scaler: bool = True
+    quality_checks: bool = True
 ) -> dict:
     """
     Advanced Data Preparation: User's custom climate data preparation
@@ -21,8 +18,8 @@ def prepare_climate_data(
     - Remove 39 unwanted columns
     - Handle missing flags (-999 variants)
     - Asian seasonal features
-    - 7-day forecast targets
-    - Use EXISTING StandardScaler (not create new one)
+    - 7-day multi-horizon forecast targets (day 1-7)
+    - NO StandardScaler (model doesn't require normalization)
     
     Args:
         raw_parquet_path: path ไฟล์ raw data
@@ -30,7 +27,6 @@ def prepare_climate_data(
         start_date: วันเริ่มต้น (YYYY-MM-DD) หรือ None = ทั้งหมด
         end_date: วันสิ้นสุด (YYYY-MM-DD) หรือ None = ทั้งหมด  
         quality_checks: ทำ data quality checks หรือไม่
-        use_existing_scaler: ใช้ existing scaler (True) หรือสร้างใหม่ (False)
     
     Returns:
         dict: สถิติการ prepare data
@@ -151,67 +147,37 @@ def prepare_climate_data(
         df["et_total"] = df["evland"] + df["evptrns"]
         print(f"   ⚡ Calculated ET total from evland + evptrns")
     
-    # 11. Create 7-day forecast targets
-    H = 7  # forecast horizon
+    # 11. Create 7-day multi-horizon forecast targets (daily forecasts 1-7)
+    H = 7  # forecast horizon (7 days)
     target_mapping = {
-        "t2m_forecast_7d": "t2m",
-        "rain_forecast_7d": "prectotcorr", 
-        "et_forecast_7d": "et_total",
-        "soil_moisture_forecast_7d": "gwettop",
-        "wind_forecast_7d": "ws10m"
+        "t2m": "t2m",
+        "rain": "prectotcorr", 
+        "et": "et_total",
+        "soil": "gwettop",
+        "wind": "ws10m"
     }
     
     forecast_targets = []
-    for target_col, source_col in target_mapping.items():
+    for name, source_col in target_mapping.items():
         if source_col in df.columns:
-            df[target_col] = df[source_col].shift(-H)
-            forecast_targets.append(target_col)
+            # Create daily forecasts for day 1 to day 7
+            for h in range(1, H+1):
+                target_col = f"{name}_d{h}_forecast"
+                df[target_col] = df[source_col].shift(-h)
+                forecast_targets.append(target_col)
     
-    print(f"   🎯 Created {len(forecast_targets)} forecast targets (7-day ahead)")
+    print(f"   🎯 Created {len(forecast_targets)} forecast targets (7-day multi-horizon)")
     
     # 12. Remove rows with missing forecast targets
     df = df.dropna(subset=forecast_targets)
     print(f"   🧹 Removed rows with missing forecast targets")
     
-    # 13. Prepare features and targets for StandardScaler
+    # 13. Prepare features and targets (NO STANDARDSCALER)
     num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     feature_cols = [col for col in num_cols if col not in forecast_targets]
     
-    # 14. Apply StandardScaler (USE EXISTING SCALER)
-    scaler_path = '/opt/airflow/models/feature_scaler.pkl'
-    scaler_applied = False
-    
-    if feature_cols:
-        if use_existing_scaler and os.path.exists(scaler_path):
-            # โหลด existing scaler (ใช้ weight เดิม)
-            print(f"   📐 Loading EXISTING scaler from: {scaler_path}")
-            scaler = joblib.load(scaler_path)
-            
-            df_scaled = df.copy()
-            df_scaled[feature_cols] = scaler.transform(df[feature_cols])  # ใช้ transform (ไม่ใช่ fit_transform)
-            
-            print(f"   📐 Applied EXISTING scaler to {len(feature_cols)} feature columns")
-            print(f"   ✅ Using same weights as your previous dataset")
-            
-            scaler_applied = True
-            df = df_scaled
-            
-        else:
-            # สร้าง scaler ใหม่ (เฉพาะกรณีไม่มีไฟล์เก่า)
-            print(f"   📐 Creating NEW scaler (no existing scaler found)")
-            scaler = StandardScaler()
-            df_scaled = df.copy()
-            df_scaled[feature_cols] = scaler.fit_transform(df[feature_cols])
-            
-            # Save new scaler
-            os.makedirs(os.path.dirname(scaler_path), exist_ok=True)
-            joblib.dump(scaler, scaler_path)
-            
-            print(f"   📐 Applied NEW scaler to {len(feature_cols)} feature columns")
-            print(f"   💾 Saved new scaler to: {scaler_path}")
-            
-            scaler_applied = True
-            df = df_scaled
+    print(f"   📊 Features: {len(feature_cols)} columns, Targets: {len(forecast_targets)} columns")
+    print(f"   ⚠️  NO StandardScaler applied (model doesn't require normalization)")
     
     # 15. Save cleaned and prepared data
     os.makedirs(os.path.dirname(output_parquet_path), exist_ok=True)
@@ -237,17 +203,15 @@ def prepare_climate_data(
         'forecast_targets': forecast_targets,
         'feature_columns': len(feature_cols),
         'missing_flags_replaced': sum(missing_stats.values()) if missing_stats else 0,
-        'scaler_applied': scaler_applied,
-        'scaler_type': 'existing' if (use_existing_scaler and os.path.exists(scaler_path)) else 'new',
-        'scaler_path': scaler_path if scaler_applied else None
+        'normalization': 'none (model doesn\'t require)'
     }
     
     print(f"✅ Advanced data preparation completed:")
     print(f"   📊 Final: {final_rows:,} rows, {final_cols} columns")
     print(f"   🗑️  Removed: {original_rows - final_rows:,} rows, {original_cols - final_cols} columns")
     print(f"   📅 Range: {date_range}")
-    print(f"   🎯 Targets: {len(forecast_targets)} forecast columns")
-    print(f"   📐 Scaler: {result['scaler_type']} scaler applied")
+    print(f"   🎯 Targets: {len(forecast_targets)} forecast columns (7-day multi-horizon)")
+    print(f"   🚫 No normalization applied")
     print(f"   💾 Saved: {output_parquet_path}")
     
     return result
@@ -262,8 +226,8 @@ def prepare_climate_incremental(
     """
     Incremental preparation with advanced data preparation logic
     - Applies user's custom preparation to new data
-    - Updates StandardScaler with new data
     - Maintains consistency with existing prepared data
+    - NO StandardScaler (model doesn't require normalization)
     
     Args:
         existing_clean_path: path ไฟล์ clean data เก่า
@@ -311,24 +275,6 @@ def prepare_climate_incremental(
     new_df['date'] = pd.to_datetime(new_df['date'])
     
     if not existing_df.empty:
-        # Check for scaler compatibility
-        scaler_path = '/opt/airflow/models/feature_scaler.pkl'
-        if os.path.exists(scaler_path):
-            print(f"   📐 Using existing scaler for consistency")
-            
-            # Load existing scaler
-            scaler = joblib.load(scaler_path)
-            
-            # Get feature columns (excluding forecast targets)
-            forecast_targets = [col for col in new_df.columns if 'forecast_7d' in col]
-            num_cols = new_df.select_dtypes(include=[np.number]).columns.tolist()
-            feature_cols = [col for col in num_cols if col not in forecast_targets]
-            
-            # Apply existing scaler to new data features
-            if feature_cols:
-                new_df[feature_cols] = scaler.transform(new_df[feature_cols])
-                print(f"   📐 Applied existing scaler to {len(feature_cols)} features")
-        
         # รวมข้อมูล: ลบ overlap แล้วเพิ่มข้อมูลใหม่
         cutoff_date = new_df['date'].min()
         existing_filtered = existing_df[existing_df['date'] < cutoff_date]
