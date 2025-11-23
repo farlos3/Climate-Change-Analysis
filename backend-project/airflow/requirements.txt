@@ -8,3 +8,5 @@ fastparquet
 scikit-learn
 joblib
 requests
+
+airflow
