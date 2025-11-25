@@ -1,4 +1,5 @@
 parameter,long_name
+DATE,Date
 AIRMASS,Air Mass
 ALLSKY_KT,All Sky Insolation Clearness Index
 ALLSKY_NKT,All Sky Normalized Insolation Clearness Index

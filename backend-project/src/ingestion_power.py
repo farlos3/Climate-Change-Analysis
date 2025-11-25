@@ -4,11 +4,9 @@ import pandas as pd
 import datetime
 from src.config import LAT, LON, PARAMETERS_AFTER_2001, DEFAULT_START, AFTER_2001_START, POWER_URL
 
-
 def chunk_list(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i:i+n]
-
 
 def fetch_power_daily_batch(param_file: str, output_parquet_path: str):
 
