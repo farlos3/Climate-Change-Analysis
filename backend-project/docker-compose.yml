@@ -15,7 +15,6 @@ services:
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/data/airflow.db
-      - MOTHERDUCK_TOKEN=${MOTHERDUCK_TOKEN}
     command: >
       bash -c "
         airflow db migrate &&
@@ -51,9 +50,18 @@ services:
       - ./airflow/data:/app/data
       - ./src:/app/src
       - ./airflow/data:/opt/airflow/data
-      - ./app/data:/opt/airflow/data
       - ./app/models:/opt/app/models
     ports:
       - "8000:8000"
-    environment:
-      - MOTHERDUCK_TOKEN=${MOTHERDUCK_TOKEN}
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_proxy
+    ports:
+      - "80:80" # เปิด Port 80 ให้โลกภายนอก (Azure VM) เข้าถึงได้
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - fastapi
+      - airflow_standalone
+    restart: unless-stopped
