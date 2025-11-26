@@ -27,8 +27,8 @@ services:
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./src:/opt/airflow/src
+      - ./app/models:/opt/airflow/models
       - ./airflow/data:/opt/airflow/data
-      - ./models:/opt/airflow/models
     ports:
       - "8090:8080"
     environment:
@@ -48,6 +48,8 @@ services:
     volumes:
       - ./airflow/data:/app/data
       - ./src:/app/src
-      - ./models:/app/models
+      - ./airflow/data:/opt/airflow/data
+      - ./app/data:/opt/airflow/data
+      - ./app/models:/opt/app/models
     ports:
       - "8000:8000"

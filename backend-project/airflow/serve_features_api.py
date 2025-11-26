@@ -1,0 +1,23 @@
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
+import duckdb
+import pandas as pd
+import os
+
+app = FastAPI()
+
+DUCKDB_PATH = '/opt/airflow/data/duckdb/climate.duckdb'
+FEATURE_TABLE = "climate_features"
+
+@app.get('/features')
+def features_json():
+    if not os.path.exists(DUCKDB_PATH):
+        raise HTTPException(status_code=404, detail=f"DuckDB file not found: {DUCKDB_PATH}")
+    con = duckdb.connect(DUCKDB_PATH)
+    df = con.execute(f"SELECT * FROM {FEATURE_TABLE}").df()
+    con.close()
+    return JSONResponse(content=df.to_dict(orient="records"))
+
+if __name__ == '__main__':
+    import uvicorn
+    uvicorn.run(app, host='0.0.0.0', port=8090)

@@ -1,6 +1,9 @@
 import sys
 import os
 import pandas as pd
+import requests
+import json
+
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
@@ -100,13 +103,10 @@ def load_clean_to_duckdb_task():
     return result
 
 def feature_engineering_task():
-    """
-    Feature engineering: DuckDB → Parquet
-    """
     from src.feature_engineering import engineer_t2m_features_from_duckdb
     print("🧑‍🔬 FEATURE ENGINEERING: Generating features from DuckDB...")
     duckdb_path = '/opt/airflow/data/duckdb/climate.duckdb'
-    table_name = 'climate_clean'
+    table_name = 'climate_features'
     output_path = '/opt/airflow/data/prepared/feature_engineering_t2m.parquet'
     df_fe, feature_cols = engineer_t2m_features_from_duckdb(
         duckdb_path=duckdb_path,
@@ -132,6 +132,45 @@ def feature_engineering_task():
 def load_prepared_to_duckdb_task():
     """Legacy wrapper - now uses new data preparation flow"""
     return load_clean_to_duckdb_task()
+
+def notify_backend_features_task(**context):
+    """
+    ให้ Airflow ยิงไปหา backend API บอกว่า
+    'เฮ้ feature ใหม่พร้อมแล้วนะ'
+    """
+
+    backend_url = "http://fastapi:8000/ingest/features"
+    print(f"📡 Notifying backend at {backend_url}")
+    
+
+    # ดึงข้อมูลจาก DuckDB table climate_features
+    import duckdb
+    duckdb_path = "/opt/airflow/data/duckdb/climate.duckdb"
+    table_name = "climate_features"
+    con = duckdb.connect(duckdb_path)
+    df = con.execute(f"SELECT * FROM {table_name}").df()
+    con.close()
+
+    # แปลง datetime/Timestamp เป็น string เพื่อให้ serialize เป็น JSON ได้
+    df = df.copy()
+    for col in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            df[col] = df[col].astype(str)
+    features_json = df.to_dict(orient="records")
+
+    payload = {
+        "source": "airflow_climate_pipeline",
+        "row_count": len(df),
+        "features": features_json,
+    }
+
+    resp = requests.post(backend_url, json=payload, timeout=30)
+    print("Backend status:", resp.status_code)
+    print("Backend response:", resp.text)
+
+    resp.raise_for_status()  # ให้ task fail ถ้า backend 4xx/5xx
+
+    return resp.json()
 
 default_args = {
     'owner': 'climate_team',
@@ -181,14 +220,16 @@ with DAG(
         retries=1,
     )
 
-    # --- PRODUCTION & DEMO FLOW ---
-    # สำหรับ Demo: แสดง fresh start ในรันแรก, incremental ในรันถัดไป
-    # สำหรับ Production: ทำงานปกติทุกวัน (NASA API delay 3 วัน)
-    # Flow: API → Raw → Prepare → Load → Feature Engineering
     feature_engineering = PythonOperator(
         task_id="feature_engineering_task",
         python_callable=feature_engineering_task,
         retries=1,
     )
-
-    ingest_task >> smart_load_raw >> prepare_clean >> load_clean >> feature_engineering
+    
+    notify_backend = PythonOperator(
+        task_id="notify_backend_features",
+        python_callable=notify_backend_features_task,
+        retries=1,
+    )
+    
+    ingest_task >> smart_load_raw >> prepare_clean >> load_clean >> feature_engineering >> notify_backend
