@@ -20,7 +20,7 @@ def smart_load_raw_to_duckdb(
         raise FileNotFoundError(f"Raw parquet not found: {raw_parquet_path}")
 
     os.makedirs(os.path.dirname(duckdb_path), exist_ok=True)
-    con = duckdb.connect(duckdb_path)
+    con = duckdb.connect("md:Climate Change (T2M)")
 
     try:
         # ตรวจสอบว่า table มีอยู่แล้วมั้ย
@@ -76,7 +76,7 @@ def load_prepared_to_duckdb_direct(
         raise FileNotFoundError(f"Prepared parquet not found: {prepared_parquet_path}")
     
     os.makedirs(os.path.dirname(duckdb_path), exist_ok=True)
-    con = duckdb.connect(duckdb_path)
+    con = duckdb.connect("md:Climate Change (T2M)")
     
     try:
         print(f"📥 LOADING PREPARED DATA: {prepared_parquet_path} → {table_name}")
@@ -159,18 +159,20 @@ def load_features_to_duckdb(
         raise FileNotFoundError(f"Features file not found: {features_file_path}")
 
     os.makedirs(os.path.dirname(duckdb_path), exist_ok=True)
-    con = duckdb.connect(duckdb_path)
+    con = duckdb.connect("md:Climate Change (T2M)")
 
     try:
         print(f"📥 LOADING FEATURES: {features_file_path} → {table_name}")
+        # Drop table if exists before creating
+        con.execute(f"DROP TABLE IF EXISTS {table_name}")
         if features_file_path.endswith(".csv"):
             con.execute(f"""
-                CREATE OR REPLACE TABLE {table_name} AS
+                CREATE TABLE {table_name} AS
                 SELECT * FROM read_csv_auto('{features_file_path}')
             """)
         else:
             con.execute(f"""
-                CREATE OR REPLACE TABLE {table_name} AS
+                CREATE TABLE {table_name} AS
                 SELECT * FROM read_parquet('{features_file_path}')
             """)
         result_check = con.execute(f"""

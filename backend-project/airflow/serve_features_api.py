@@ -13,7 +13,7 @@ FEATURE_TABLE = "climate_features"
 def features_json():
     if not os.path.exists(DUCKDB_PATH):
         raise HTTPException(status_code=404, detail=f"DuckDB file not found: {DUCKDB_PATH}")
-    con = duckdb.connect(DUCKDB_PATH)
+    con = duckdb.connect("md:Climate Change (T2M)") 
     df = con.execute(f"SELECT * FROM {FEATURE_TABLE}").df()
     con.close()
     return JSONResponse(content=df.to_dict(orient="records"))

@@ -418,7 +418,7 @@ def engineer_t2m_features_from_duckdb(
     Feature Engineering pipeline โดยดึงข้อมูลจาก DuckDB table โดยตรง
     """
     import duckdb
-    con = duckdb.connect(duckdb_path)
+    con = duckdb.connect("md:Climate Change (T2M)")
     df = con.execute(f"SELECT * FROM {table_name}").df()
     con.close()
 
@@ -464,22 +464,3 @@ def engineer_t2m_features_from_duckdb(
     df_final.to_parquet(output_path, index=False)
 
     return df_final, feature_cols
-
-# -----------------------------
-# script entry point
-# -----------------------------
-# if __name__ == "__main__":
-#     # ตัวอย่างการใช้ฟังก์ชันใหม่
-#     DUCKDB_PATH = "backend-project/airflow/data/duckdb/climate.duckdb"
-#     TABLE_NAME = "climate_clean"
-#     OUTPUT_PATH = "feature_engineering_t2m.csv"
-
-#     df_fe, feature_cols = engineer_t2m_features_from_duckdb(
-#         duckdb_path=DUCKDB_PATH,
-#         table_name=TABLE_NAME,
-#         output_path=OUTPUT_PATH,
-#     )
-
-#     print("Final FE (inference) shape:", df_fe.shape)
-#     print("Number of feature columns:", len(feature_cols))
-#     print(df_fe.columns.tolist())

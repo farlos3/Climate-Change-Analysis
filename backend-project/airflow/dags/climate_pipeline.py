@@ -106,7 +106,7 @@ def feature_engineering_task():
     from src.feature_engineering import engineer_t2m_features_from_duckdb
     print("🧑‍🔬 FEATURE ENGINEERING: Generating features from DuckDB...")
     duckdb_path = '/opt/airflow/data/duckdb/climate.duckdb'
-    table_name = 'climate_features'
+    table_name = 'climate_clean'
     output_path = '/opt/airflow/data/prepared/feature_engineering_t2m.parquet'
     df_fe, feature_cols = engineer_t2m_features_from_duckdb(
         duckdb_path=duckdb_path,
@@ -117,7 +117,7 @@ def feature_engineering_task():
     print(f"   📤 Saved to: {output_path}")
     # --- Save features to DuckDB table ---
     from src.etl_to_duckdb import load_features_to_duckdb
-    features_table_name = 'climate_features'
+    features_table_name = 'climate_clean'
     duckdb_result = load_features_to_duckdb(
         features_file_path=output_path,
         duckdb_path=duckdb_path,
@@ -146,8 +146,8 @@ def notify_backend_features_task(**context):
     # ดึงข้อมูลจาก DuckDB table climate_features
     import duckdb
     duckdb_path = "/opt/airflow/data/duckdb/climate.duckdb"
-    table_name = "climate_features"
-    con = duckdb.connect(duckdb_path)
+    table_name = "climate_clean"
+    con = duckdb.connect("md:Climate Change (T2M)") 
     df = con.execute(f"SELECT * FROM {table_name}").df()
     con.close()
 

@@ -186,13 +186,11 @@ def add_forecast_targets(df: pd.DataFrame, horizon: int = 7) -> Tuple[pd.DataFra
 
     return df, target_cols
 
-
 def select_feature_and_target_columns(df: pd.DataFrame, target_cols: List[str]) -> Tuple[List[str], List[str]]:
 
     num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     feature_cols = [col for col in num_cols if col not in target_cols]
     return feature_cols, target_cols
-
 
 def prepare_nasa_power_data(
     input_path: str = None,
@@ -236,19 +234,11 @@ def prepare_nasa_power_data_from_duckdb(
     output_path: str,
     # horizon: int = 7
 ) -> pd.DataFrame:
-    """
-    เตรียมข้อมูลจาก DuckDB table โดยตรง แล้วบันทึกเป็น parquet
-    Args:
-        duckdb_path: path ของ duckdb database
-        table_name: ชื่อ table ที่ต้องการดึงข้อมูล
-        output_path: path สำหรับบันทึกไฟล์ parquet ที่เตรียมแล้ว
-    Returns:
-        DataFrame ที่เตรียมแล้ว
-    """
+
     import duckdb
     
     print(f"📤 Loading raw data from DuckDB table: {table_name}")
-    con = duckdb.connect(duckdb_path)
+    con = duckdb.connect("md:Climate Change (T2M)") 
     raw_df = con.execute(f"SELECT * FROM {table_name}").df()
     con.close()
 
