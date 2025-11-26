@@ -1,3 +1,6 @@
+# Incremental preparation logic moved from data_preparation.py
+import numpy as np
+from datetime import timedelta
 import os
 import requests
 import pandas as pd
@@ -74,9 +77,11 @@ def fetch_power_daily_batch(param_file: str, output_parquet_path: str):
 
     os.makedirs(os.path.dirname(output_parquet_path), exist_ok=True)
 
-    df.to_parquet(output_parquet_path, index=True)
+    # Convert index to column 'date' and save as Parquet
+    df_out = df.reset_index().rename(columns={"index": "DATE"})
+    df_out.to_parquet(output_parquet_path, index=False)
 
     print(f"\nSaved RAW Parquet to: {output_parquet_path}")
-    print(f"Parquet shape: {df.shape}")
+    print(f"Parquet shape: {df_out.shape}")
 
     return output_parquet_path

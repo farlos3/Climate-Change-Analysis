@@ -402,23 +402,84 @@ def engineer_t2m_features_for_predict(
     num_cols = df_final.select_dtypes(include=[np.number]).columns.tolist()
     feature_cols = [c for c in num_cols if c != "date"]
 
-    # เซฟออกเป็น CSV
-    df_final.to_csv(output_path, index=False)
+    # เซฟออกเป็น Parquet
+    df_final.to_parquet(output_path, index=False)
+
+    return df_final, feature_cols
+
+def engineer_t2m_features_from_duckdb(
+    duckdb_path: str,
+    table_name: str,
+    output_path: str,
+    lags: List[int] = None,
+    windows: List[int] = None,
+) -> Tuple[pd.DataFrame, List[str]]:
+    """
+    Feature Engineering pipeline โดยดึงข้อมูลจาก DuckDB table โดยตรง
+    """
+    import duckdb
+    con = duckdb.connect(duckdb_path)
+    df = con.execute(f"SELECT * FROM {table_name}").df()
+    con.close()
+
+    if lags is None:
+        lags = LAG_LIST
+    if windows is None:
+        windows = ROLLING_WINDOWS
+
+    # 2) base features
+    base_features = select_base_features(df, SELECTED_FEATURES)
+
+    # 3) df_sel (ไม่มี target)
+    df_sel = build_base_frame(df, base_features)
+
+    # 4) seasonal
+    seasonal_df = add_seasonal_features(df_sel)
+
+    # 5) lag features
+    lag_df = add_lag_features(df_sel, base_features, lags=lags)
+
+    # 6) rolling features
+    rolling_df = add_rolling_features(df_sel, rolling_cols=ROLLING_COLS, windows=windows)
+
+    # 7) รวม base+seasonal+lag+rolling
+    df_fe = pd.concat([
+        df_sel,
+        seasonal_df,
+        lag_df,
+        rolling_df,
+    ], axis=1)
+
+    # ลบ NaN จาก base lag/rolling ชุดแรก
+    df_fe = df_fe.dropna().reset_index(drop=True)
+
+    # 8) Advanced features (ใช้ df_fe ที่สะอาดแล้ว)
+    df_final = add_advanced_features(df_fe)
+
+    # 9) feature columns = ทุกคอลัมน์ตัวเลขที่ไม่ใช่ date
+    num_cols = df_final.select_dtypes(include=[np.number]).columns.tolist()
+    feature_cols = [c for c in num_cols if c != "date"]
+
+    # เซฟออกเป็น Parquet
+    df_final.to_parquet(output_path, index=False)
 
     return df_final, feature_cols
 
 # -----------------------------
 # script entry point
 # -----------------------------
-if __name__ == "__main__":
-    INPUT_PATH = "backend-project/airflow/data/prepared/power_daily_prepared1.parquet"
-    OUTPUT_PATH = "feature_engineering_t2m.csv"
+# if __name__ == "__main__":
+#     # ตัวอย่างการใช้ฟังก์ชันใหม่
+#     DUCKDB_PATH = "backend-project/airflow/data/duckdb/climate.duckdb"
+#     TABLE_NAME = "climate_clean"
+#     OUTPUT_PATH = "feature_engineering_t2m.csv"
 
-    df_fe, feature_cols = engineer_t2m_features_for_predict(
-        input_path=INPUT_PATH,
-        output_path=OUTPUT_PATH,
-    )
+#     df_fe, feature_cols = engineer_t2m_features_from_duckdb(
+#         duckdb_path=DUCKDB_PATH,
+#         table_name=TABLE_NAME,
+#         output_path=OUTPUT_PATH,
+#     )
 
-    print("Final FE (inference) shape:", df_fe.shape)
-    print("Number of feature columns:", len(feature_cols))
-    print(df_fe.columns.tolist())
+#     print("Final FE (inference) shape:", df_fe.shape)
+#     print("Number of feature columns:", len(feature_cols))
+#     print(df_fe.columns.tolist())

@@ -3,7 +3,6 @@ import duckdb
 from datetime import datetime, timedelta
 from typing import Optional
 
-
 def smart_load_raw_to_duckdb(
     raw_parquet_path: str, 
     duckdb_path: str, 
@@ -30,87 +29,30 @@ def smart_load_raw_to_duckdb(
             WHERE table_name = '{table_name}'
         """).fetchone()[0] > 0
         
-        if not table_exists:
-            # Fresh Start: สร้าง table ใหม่
-            print(f"🆕 FRESH START: Creating new {table_name} table...")
-            
-            con.execute(f"""
-                CREATE TABLE {table_name} AS
-                SELECT * FROM read_parquet('{raw_parquet_path}')
-            """)
-            
-            row_count = con.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
-            date_range = con.execute(f"SELECT MIN(date) as min_date, MAX(date) as max_date FROM {table_name}").fetchone()
-            
-            result = {
-                'status': 'fresh_start',
-                'operation': 'create_new_table',
-                'total_rows': row_count,
-                'date_range': f"{date_range[0]} to {date_range[1]}",
-                'table_name': table_name
-            }
-            
-            print(f"✅ Fresh start completed: {row_count:,} rows loaded")
-            
-        else:
-            # Incremental Update: ทับข้อมูลที่ overlap
-            print(f"🔄 INCREMENTAL UPDATE: Updating {table_name} table...")
-            
-            # อ่านข้อมูลใหม่จาก parquet
-            new_data = con.execute(f"SELECT * FROM read_parquet('{raw_parquet_path}')").df()
-            
-            if new_data.empty:
-                return {'status': 'no_data', 'message': 'No new data to process'}
-            
-            # หาช่วงวันที่ของข้อมูลใหม่
-            date_range = {
-                'start_date': new_data['date'].min(),
-                'end_date': new_data['date'].max(),
-                'total_new_rows': len(new_data)
-            }
-            
-            # ตรวจสอบข้อมูลที่จะ overlap
-            overlap_check = con.execute(f"""
-                SELECT COUNT(*) as overlap_count
-                FROM {table_name}
-                WHERE date >= '{date_range['start_date']}' 
-                AND date <= '{date_range['end_date']}'
-            """).fetchone()[0]
-            
-            # ลบข้อมูลเก่าที่ overlap
-            if overlap_check > 0:
-                print(f"   🗑️  Removing {overlap_check:,} overlapping rows...")
-                con.execute(f"""
-                    DELETE FROM {table_name}
-                    WHERE date >= '{date_range['start_date']}' 
-                    AND date <= '{date_range['end_date']}'
-                """)
-            
-            # Insert ข้อมูลใหม่
-            print(f"   ➕ Inserting {date_range['total_new_rows']:,} new rows...")
-            con.execute(f"""
-                INSERT INTO {table_name}
-                SELECT * FROM read_parquet('{raw_parquet_path}')
-            """)
-            
-            # ตรวจสอบผลลัพธ์สุดท้าย
-            final_count = con.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
-            final_range = con.execute(f"SELECT MIN(date) as min_date, MAX(date) as max_date FROM {table_name}").fetchone()
-            
-            result = {
-                'status': 'incremental_update',
-                'operation': 'overlap_and_insert',
-                'new_data_range': f"{date_range['start_date']} to {date_range['end_date']}",
-                'new_rows_added': date_range['total_new_rows'],
-                'overlap_rows_replaced': overlap_check,
-                'total_rows_after': final_count,
-                'full_data_range': f"{final_range[0]} to {final_range[1]}",
-                'table_name': table_name
-            }
-            
-            print(f"✅ Incremental update completed: {final_count:,} total rows")
-            print(f"   📊 Added: {date_range['total_new_rows']} | Replaced: {overlap_check}")
-        
+        # Always overwrite table with new data (no incremental logic)
+        print(f"🆕 OVERWRITE: Creating or replacing {table_name} table...")
+        import pandas as pd
+        df = pd.read_parquet(raw_parquet_path)
+        if 'DATE' in df.columns:
+            df = df.rename(columns={'DATE': 'date'})
+        if 'date' not in df.columns:
+            raise Exception(f"Parquet file '{raw_parquet_path}' does not contain a 'date' column after renaming. Columns found: {list(df.columns)}")
+        con.register('raw_df', df)
+        col_str = ', '.join(df.columns)
+        con.execute(f"""
+            CREATE OR REPLACE TABLE {table_name} AS
+            SELECT {col_str} FROM raw_df
+        """)
+        row_count = con.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
+        date_range = con.execute(f"SELECT MIN(date) as min_date, MAX(date) as max_date FROM {table_name}").fetchone()
+        result = {
+            'status': 'overwrite',
+            'operation': 'create_or_replace_table',
+            'total_rows': row_count,
+            'date_range': f"{date_range[0]} to {date_range[1]}",
+            'table_name': table_name
+        }
+        print(f"✅ Overwrite completed: {row_count:,} rows loaded")
         return result
         
     except Exception as e:
@@ -118,7 +60,6 @@ def smart_load_raw_to_duckdb(
         raise e
     finally:
         con.close()
-
 
 def load_prepared_to_duckdb_direct(
     prepared_parquet_path: str, 
@@ -140,10 +81,17 @@ def load_prepared_to_duckdb_direct(
     try:
         print(f"📥 LOADING PREPARED DATA: {prepared_parquet_path} → {table_name}")
         
-        # Simple load: อ่าน parquet เข้า DuckDB ตรงๆ
+        # อ่าน parquet แล้วแปลง 'DATE' เป็น 'date' ก่อนโหลดเข้า DuckDB
+        import pandas as pd
+        df = pd.read_parquet(prepared_parquet_path)
+        if 'DATE' in df.columns:
+            df = df.rename(columns={'DATE': 'date'})
+        # Register DataFrame and load into DuckDB
+        con.register('prepared_df', df)
+        col_str = ', '.join(df.columns)
         con.execute(f"""
             CREATE OR REPLACE TABLE {table_name} AS
-            SELECT * FROM read_parquet('{prepared_parquet_path}')
+            SELECT {col_str} FROM prepared_df
         """)
         
         # ตรวจสอบผลลัพธ์
@@ -176,7 +124,6 @@ def load_prepared_to_duckdb_direct(
     finally:
         con.close()
 
-
 # Backward compatibility wrappers
 def load_raw_to_duckdb(raw_parquet_path: str, duckdb_path: str, table_name: str = "climate_raw"):
     """
@@ -185,7 +132,6 @@ def load_raw_to_duckdb(raw_parquet_path: str, duckdb_path: str, table_name: str 
     """
     result = smart_load_raw_to_duckdb(raw_parquet_path, duckdb_path, table_name)
     return duckdb_path
-
 
 def load_prepared_to_duckdb(prepared_parquet_path: str, duckdb_path: str, table_name: str = "climate_clean"):
     """
@@ -197,3 +143,54 @@ def load_prepared_to_duckdb(prepared_parquet_path: str, duckdb_path: str, table_
     result = load_prepared_to_duckdb_direct(prepared_parquet_path, duckdb_path, table_name)
     
     return duckdb_path
+
+def load_features_to_duckdb(
+    features_file_path: str,
+    duckdb_path: str,
+    table_name: str = "climate_features"
+) -> dict:
+    """
+    Load features (CSV/Parquet) → DuckDB table สำหรับ feature engineering โดยเฉพาะ
+    """
+    import os
+    import duckdb
+
+    if not os.path.exists(features_file_path):
+        raise FileNotFoundError(f"Features file not found: {features_file_path}")
+
+    os.makedirs(os.path.dirname(duckdb_path), exist_ok=True)
+    con = duckdb.connect(duckdb_path)
+
+    try:
+        print(f"📥 LOADING FEATURES: {features_file_path} → {table_name}")
+        if features_file_path.endswith(".csv"):
+            con.execute(f"""
+                CREATE OR REPLACE TABLE {table_name} AS
+                SELECT * FROM read_csv_auto('{features_file_path}')
+            """)
+        else:
+            con.execute(f"""
+                CREATE OR REPLACE TABLE {table_name} AS
+                SELECT * FROM read_parquet('{features_file_path}')
+            """)
+        result_check = con.execute(f"""
+            SELECT COUNT(*) as row_count,
+                   MIN(date) as min_date,
+                   MAX(date) as max_date
+            FROM {table_name}
+        """).fetchone()
+        result = {
+            'status': 'success',
+            'operation': 'features_load',
+            'source_file': features_file_path,
+            'target_table': table_name,
+            'loaded_rows': result_check[0],
+            'data_range': f"{result_check[1]} to {result_check[2]}"
+        }
+        print(f"✅ Features loaded: {result_check[0]:,} rows")
+        return result
+    except Exception as e:
+        print(f"❌ Error loading features: {e}")
+        raise e
+    finally:
+        con.close()

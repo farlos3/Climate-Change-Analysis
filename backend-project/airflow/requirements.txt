@@ -8,5 +8,4 @@ fastparquet
 scikit-learn
 joblib
 requests
-
-airflow
+apache-airflow==3.1.0

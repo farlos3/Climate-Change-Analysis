@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 from typing import List, Tuple
+import os
+from datetime import timedelta
 
 MISSING_FLAGS = [-999, -999.0, -9999, -99, -99.0]
 
@@ -192,15 +194,23 @@ def select_feature_and_target_columns(df: pd.DataFrame, target_cols: List[str]) 
     return feature_cols, target_cols
 
 
-# -----------------------------
-# main pipeline
-# -----------------------------
 def prepare_nasa_power_data(
-    input_path: str,
-    output_path: str,
+    input_path: str = None,
+    output_path: str = None,
+    raw_parquet_path: str = None,
+    output_parquet_path: str = None,
+    quality_checks: bool = True,
     # horizon: int = 7
 ) -> Tuple[pd.DataFrame, List[str], List[str]]:
-    
+    """
+    รองรับทั้งแบบใหม่ (input_path/output_path) และแบบเดิม (raw_parquet_path/output_parquet_path)
+    """
+    # เลือก path ตาม argument ที่ส่งมา
+    if input_path is None and raw_parquet_path is not None:
+        input_path = raw_parquet_path
+    if output_path is None and output_parquet_path is not None:
+        output_path = output_parquet_path
+
     df = load_and_normalize_columns(input_path)
     df = drop_nan_columns(df)
     df = handle_missing_flags_and_dates(df)
@@ -210,13 +220,77 @@ def prepare_nasa_power_data(
     # df, target_cols = add_forecast_targets(df, horizon=horizon)
     # feature_cols, target_cols = select_feature_and_target_columns(df, target_cols)
 
-    df.to_csv(output_path, index=False)
+    # บังคับให้มี column 'DATE' เสมอ
+    if 'date' in df.columns:
+        df_out = df.rename(columns={'date': 'DATE'})
+    elif df.index.name or (df.index.names and df.index.names[0]):
+        df_out = df.reset_index().rename(columns={df.index.name or df.index.names[0]: "DATE"})
+    else:
+        df_out = df
+    df_out.to_parquet(output_path, index=False)
+    return df_out
+
+def prepare_nasa_power_data_from_duckdb(
+    duckdb_path: str,
+    table_name: str,
+    output_path: str,
+    # horizon: int = 7
+) -> pd.DataFrame:
+    """
+    เตรียมข้อมูลจาก DuckDB table โดยตรง แล้วบันทึกเป็น parquet
+    Args:
+        duckdb_path: path ของ duckdb database
+        table_name: ชื่อ table ที่ต้องการดึงข้อมูล
+        output_path: path สำหรับบันทึกไฟล์ parquet ที่เตรียมแล้ว
+    Returns:
+        DataFrame ที่เตรียมแล้ว
+    """
+    import duckdb
+    
+    print(f"📤 Loading raw data from DuckDB table: {table_name}")
+    con = duckdb.connect(duckdb_path)
+    raw_df = con.execute(f"SELECT * FROM {table_name}").df()
+    con.close()
+
+    # เตรียมข้อมูลเหมือน prepare_nasa_power_data
+    df = load_and_normalize_columns_from_df(raw_df)
+    df = drop_nan_columns(df)
+    df = handle_missing_flags_and_dates(df)
+    df = add_time_features(df)
+    df = drop_zero_dominated_columns(df)
+    df = add_et_total(df)
+    # df, target_cols = add_forecast_targets(df, horizon=horizon)
+    # feature_cols, target_cols = select_feature_and_target_columns(df, target_cols)
+
+    # บังคับให้มี column 'DATE' เสมอ
+    if 'date' in df.columns:
+        df_out = df.rename(columns={'date': 'DATE'})
+    elif df.index.name or (df.index.names and df.index.names[0]):
+        df_out = df.reset_index().rename(columns={df.index.name or df.index.names[0]: "DATE"})
+    else:
+        df_out = df
+    df_out.to_parquet(output_path, index=False)
+    return df_out
+
+def load_and_normalize_columns_from_df(df: pd.DataFrame) -> pd.DataFrame:
+    df.columns = df.columns.str.lower()
     return df
+
+# Wrapper สำหรับ Airflow pipeline (fresh preparation)
+def prepare_climate_data(raw_parquet_path: str, output_parquet_path: str, quality_checks: bool = True):
+    """
+    Wrapper สำหรับ pipeline ให้เรียกใช้งานเหมือนเดิม
+    """
+    return prepare_nasa_power_data(
+        input_path=raw_parquet_path,
+        output_path=output_parquet_path,
+        # horizon=7
+        )
 
 # if __name__ == "__main__":
     
 #     INPUT_PATH = "backend-project/airflow/data/raw/power_daily1.parquet"
-#     OUTPUT_PATH = "power_daily_prepared.csv"
+#     OUTPUT_PATH = "power_daily_prepared.parquet"
 
 #     df_prepared = prepare_nasa_power_data(
 #         INPUT_PATH,

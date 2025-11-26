@@ -1,5 +1,6 @@
 import sys
 import os
+import pandas as pd
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
@@ -51,40 +52,34 @@ def prepare_clean_data_task():
     Data preparation: Raw parquet → Clean parquet
     ทำ data cleaning และ preparation
     """
-    import os
-    from src.data_preparation import prepare_climate_incremental, prepare_climate_data
-    
+    from src.data_preparation import prepare_nasa_power_data
     print("🧹 DATA PREPARATION: Processing raw data...")
-    
-    raw_path = '/opt/airflow/data/raw/power_daily.parquet'
-    existing_clean_path = '/opt/airflow/data/prepared/climate_clean.parquet' 
-    output_clean_path = '/opt/airflow/data/prepared/climate_clean.parquet'
-    
-    # เช็คว่ามีข้อมูล clean เก่าหรือไม่
-    if os.path.exists(existing_clean_path):
-        # Incremental preparation
-        print("🔄 INCREMENTAL PREPARATION: Adding new data to existing clean data...")
-        result = prepare_climate_incremental(
-            existing_clean_path=existing_clean_path,
-            new_raw_path=raw_path,
-            output_clean_path=output_clean_path,
-            overlap_days=3  # NASA API 3-day delay
-        )
+    raw_path = "/opt/airflow/data/raw/power_daily.parquet"
+    output_clean_path = "/opt/airflow/data/prepared/climate_clean.parquet"
+    # Always prepare new data, overwrite clean parquet
+    df_clean = prepare_nasa_power_data(
+        raw_parquet_path=raw_path,
+        output_parquet_path=output_clean_path,
+        quality_checks=True,
+    )
+    # ให้แน่ใจว่า column วันที่เป็น datetime และชื่อ 'DATE'
+    if "DATE" in df_clean.columns:
+        date_col = "DATE"
     else:
-        # Fresh preparation 
-        print("🆕 FRESH PREPARATION: Creating clean data from scratch...")
-        result = prepare_climate_data(
-            raw_parquet_path=raw_path,
-            output_parquet_path=output_clean_path,
-            quality_checks=True
-        )
-    
-    print(f"✅ DATA PREPARATION COMPLETED:")
-    print(f"   📊 Final rows: {result.get('final_rows', result.get('cleaned_rows', 'N/A')):,}")
+        date_col = "date"
+    df_clean[date_col] = pd.to_datetime(df_clean[date_col])
+    result = {
+        "status": "success",
+        "operation": "prepare_and_overwrite",
+        "final_rows": len(df_clean),
+        "date_range": f"{df_clean[date_col].min().date()} to {df_clean[date_col].max().date()}",
+    }
+    print("✅ DATA PREPARATION COMPLETED:")
+    print(f"   📊 Final rows: {result['final_rows']:,}")
     print(f"   📅 Range: {result['date_range']}")
     print(f"   🔧 Operation: {result['operation']}")
-    
     return result
+
 
 def load_clean_to_duckdb_task():
     """
@@ -92,21 +87,46 @@ def load_clean_to_duckdb_task():
     เฉพาะการ load ข้อมูลที่ prepare แล้ว
     """
     from src.etl_to_duckdb import load_prepared_to_duckdb_direct
-    
     print("📥 LOADING CLEAN DATA: Prepared parquet → DuckDB...")
-    
     result = load_prepared_to_duckdb_direct(
         prepared_parquet_path='/opt/airflow/data/prepared/climate_clean.parquet',
         duckdb_path='/opt/airflow/data/duckdb/climate.duckdb',
         table_name='climate_clean'
     )
-    
     print(f"✅ CLEAN DATA LOADED:")
     print(f"   📊 Loaded: {result['loaded_rows']:,} rows")
     print(f"   📅 Range: {result['data_range']}")
     print(f"   📥 Operation: {result['operation']}")
-    
     return result
+
+def feature_engineering_task():
+    """
+    Feature engineering: DuckDB → Parquet
+    """
+    from src.feature_engineering import engineer_t2m_features_from_duckdb
+    print("🧑‍🔬 FEATURE ENGINEERING: Generating features from DuckDB...")
+    duckdb_path = '/opt/airflow/data/duckdb/climate.duckdb'
+    table_name = 'climate_clean'
+    output_path = '/opt/airflow/data/prepared/feature_engineering_t2m.parquet'
+    df_fe, feature_cols = engineer_t2m_features_from_duckdb(
+        duckdb_path=duckdb_path,
+        table_name=table_name,
+        output_path=output_path
+    )
+    print(f"✅ FEATURE ENGINEERING COMPLETED: {df_fe.shape[0]:,} rows, {len(feature_cols)} features")
+    print(f"   📤 Saved to: {output_path}")
+    # --- Save features to DuckDB table ---
+    from src.etl_to_duckdb import load_features_to_duckdb
+    features_table_name = 'climate_features'
+    duckdb_result = load_features_to_duckdb(
+        features_file_path=output_path,
+        duckdb_path=duckdb_path,
+        table_name=features_table_name
+    )
+    print(f"✅ Features saved to DuckDB table: {features_table_name}")
+    print(f"   📊 Loaded: {duckdb_result['loaded_rows']:,} rows")
+    print(f"   📅 Range: {duckdb_result['data_range']}")
+    return output_path
 
 # Legacy wrapper สำหรับ backward compatibility
 def load_prepared_to_duckdb_task():
@@ -121,7 +141,7 @@ default_args = {
     'email_on_retry': False,
     'retries': 1,
     'retry_delay': timedelta(minutes=5),
-    'execution_timeout': timedelta(minutes=30)
+    'execution_timeout': timedelta(minutes=10)
 }
 
 # Production & Demo Ready Pipeline
@@ -164,5 +184,11 @@ with DAG(
     # --- PRODUCTION & DEMO FLOW ---
     # สำหรับ Demo: แสดง fresh start ในรันแรก, incremental ในรันถัดไป
     # สำหรับ Production: ทำงานปกติทุกวัน (NASA API delay 3 วัน)
-    # Flow: API → Raw → Prepare → Load
-    ingest_task >> smart_load_raw >> prepare_clean >> load_clean
+    # Flow: API → Raw → Prepare → Load → Feature Engineering
+    feature_engineering = PythonOperator(
+        task_id="feature_engineering_task",
+        python_callable=feature_engineering_task,
+        retries=1,
+    )
+
+    ingest_task >> smart_load_raw >> prepare_clean >> load_clean >> feature_engineering
