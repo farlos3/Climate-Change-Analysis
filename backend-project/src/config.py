@@ -21,4 +21,3 @@ PARAMETERS_AFTER_2001 = [
     "CLOUD_AMT",
     "CDD18_3"
 ]
-

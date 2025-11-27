@@ -53,15 +53,3 @@ services:
       - ./app/models:/opt/app/models
     ports:
       - "8000:8000"
-
-  nginx:
-    image: nginx:alpine
-    container_name: nginx_proxy
-    ports:
-      - "80:80" # เปิด Port 80 ให้โลกภายนอก (Azure VM) เข้าถึงได้
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-    depends_on:
-      - fastapi
-      - airflow_standalone
-    restart: unless-stopped
