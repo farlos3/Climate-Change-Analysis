@@ -44,9 +44,3 @@ This project analyzes climate data and forecasts temperature and other environme
 - Airflow DAGs for pipeline automation (`backend-project/airflow/dags/`)
 - Docker Compose for multi-service orchestration (`backend-project/docker-compose.yml`)
 - nginx for reverse proxy (`backend-project/nginx/conf.d/`)
-
-## Authors
-- Project by farlos3 and team
-
-## License
-MIT License
