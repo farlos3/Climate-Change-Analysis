@@ -28,6 +28,17 @@ This project analyzes climate data and forecasts temperature and other environme
    - Access Airflow UI at `http://localhost:8080`
 4. **Run notebooks** for EDA, feature selection, and model comparison.
 
+## Airflow Admin Access
+To access the Airflow web UI, you need an admin account. The default admin user is created automatically when starting Airflow with Docker Compose.
+
+To find the generated admin password, run:
+
+```bash
+docker-compose logs airflow_standalone | grep -A2 -B2 "Password for user" | tail -4
+```
+
+This will display the username and password for the Airflow admin account in the logs. Use these credentials to log in at `http://localhost:8080`.
+
 ## Notebooks
 - `Notebook/feature_selection.ipynb`: Feature selection for modeling
 - `Notebook/feature_t2m.ipynb`: T2M feature engineering
@@ -43,10 +54,3 @@ This project analyzes climate data and forecasts temperature and other environme
 ## Orchestration & Automation
 - Airflow DAGs for pipeline automation (`backend-project/airflow/dags/`)
 - Docker Compose for multi-service orchestration (`backend-project/docker-compose.yml`)
-- nginx for reverse proxy (`backend-project/nginx/conf.d/`)
-
-## Authors
-- Project by farlos3 and team
-
-## License
-MIT License
