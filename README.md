@@ -34,9 +34,6 @@ This project analyzes climate data and forecasts temperature and other environme
 - `Model/Ensemble&Compare.ipynb`: Model comparison and visualization
 - `Notebook/analysis.ipynb`: Data analysis and exploration
 
-## Model Files
-- Saved models in `Model/Weight/` and `backend-project/app/models/`
-
 ## API Endpoints
 - FastAPI endpoints for prediction and feature ingestion (see `backend-project/app/main.py`)
 
