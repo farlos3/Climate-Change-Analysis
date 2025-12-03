@@ -13,18 +13,18 @@ def smart_load_raw_to_duckdb(
     if not os.path.exists(raw_parquet_path):
         raise FileNotFoundError(f"Raw parquet not found: {raw_parquet_path}")
 
-    os.makedirs(os.path.dirname(duckdb_path), exist_ok=True)
+    if not duckdb_path.startswith("md:"):
+        os.makedirs(os.path.dirname(duckdb_path), exist_ok=True)
     con = duckdb.connect("md:Climate Change (T2M)")
 
     try:
-        # ตรวจสอบว่า table มีอยู่แล้วมั้ย
         table_exists = con.execute(f"""
             SELECT COUNT(*) FROM information_schema.tables 
             WHERE table_name = '{table_name}'
         """).fetchone()[0] > 0
         
         # Always overwrite table with new data (no incremental logic)
-        print(f"🆕 OVERWRITE: Creating or replacing {table_name} table...")
+        print(f"OVERWRITE: Creating or replacing {table_name} table...")
         import pandas as pd
         df = pd.read_parquet(raw_parquet_path)
         if 'DATE' in df.columns:
@@ -69,7 +69,8 @@ def load_prepared_to_duckdb_direct(
     if not os.path.exists(prepared_parquet_path):
         raise FileNotFoundError(f"Prepared parquet not found: {prepared_parquet_path}")
     
-    os.makedirs(os.path.dirname(duckdb_path), exist_ok=True)
+    if not duckdb_path.startswith("md:"):
+        os.makedirs(os.path.dirname(duckdb_path), exist_ok=True)
     con = duckdb.connect("md:Climate Change (T2M)")
     
     try:
@@ -137,7 +138,8 @@ def load_features_to_duckdb(
     if not os.path.exists(features_file_path):
         raise FileNotFoundError(f"Features file not found: {features_file_path}")
 
-    os.makedirs(os.path.dirname(duckdb_path), exist_ok=True)
+    if not duckdb_path.startswith("md:"):
+        os.makedirs(os.path.dirname(duckdb_path), exist_ok=True)
     con = duckdb.connect("md:Climate Change (T2M)")
 
     try:

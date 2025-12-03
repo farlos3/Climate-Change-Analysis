@@ -6,9 +6,9 @@ from datetime import timedelta
 
 # Paths for Airflow container/production
 MODEL_PATHS = {
-    "lightgbm": "/opt/app/models/LightGBM_Multi_T2M_Model.joblib",
-    "xgboost": "/opt/app/models/Xgboost_Multi_T2M_Model.joblib",
-    "randomforest": "/opt/app/models/RandomForest_Multi_T2M_Model.joblib"
+    "lightgbm": "/opt/data/models/LightGBM_Multi_T2M_Model.joblib",
+    "xgboost": "/opt/data/models/Xgboost_Multi_T2M_Model.joblib",
+    "randomforest": "/opt/data/models/RandomForest_Multi_T2M_Model.joblib"
 }
 FEATURE_SELECTION_PATH = "/opt/airflow/data/t2m_selected_features.json"
 
@@ -28,21 +28,39 @@ def load_selected_features():
         selected_features = meta
     if not selected_features:
         raise Exception("selected_features not found")
+    # Remove any feature whose name contains only 'date' (case-insensitive)
+    selected_features = [f for f in selected_features if str(f).lower() != 'date']
     return selected_features, target_names
 
 def prepare_features(features, selected_features):
+    # Remove 'date' from features dict/list before DataFrame conversion
+    def remove_date_keys(d):
+        if isinstance(d, dict):
+            d = dict(d)
+            for k in list(d.keys()):
+                if str(k).lower() == 'date':
+                    d.pop(k)
+        return d
+
     if isinstance(features, pd.DataFrame):
-        df = features
+        df = features.copy()
+        # Drop any column named 'date' (case-insensitive)
+        date_cols = [c for c in df.columns if str(c).lower() == 'date']
+        if date_cols:
+            df = df.drop(columns=date_cols)
     elif isinstance(features, list):
-        df = pd.DataFrame(features)
+        features_no_date = [remove_date_keys(f) for f in features]
+        df = pd.DataFrame(features_no_date)
     elif isinstance(features, dict):
-        df = pd.DataFrame([features])
+        df = pd.DataFrame([remove_date_keys(features)])
     else:
         raise Exception("features must be dict, list of dicts, or DataFrame")
-    missing = [c for c in selected_features if c not in df.columns]
+    # Remove 'date' (case-insensitive) from selected_features if present
+    selected_features_no_date = [c for c in selected_features if str(c).lower() != 'date']
+    missing = [c for c in selected_features_no_date if c not in df.columns]
     if missing:
         raise Exception(f"Missing features: {missing}")
-    return df[selected_features].iloc[[-1]]
+    return df[selected_features_no_date].iloc[[-1]]
 
 def predict_randomforest(features):
     selected_features, target_names = load_selected_features()

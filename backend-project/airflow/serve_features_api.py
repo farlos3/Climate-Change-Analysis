@@ -7,12 +7,10 @@ import os
 app = FastAPI()
 
 DUCKDB_PATH = '/opt/airflow/data/duckdb/climate.duckdb'
-FEATURE_TABLE = "climate_features"
+FEATURE_TABLE = "feature_store"
 
 @app.get('/features')
 def features_json():
-    if not os.path.exists(DUCKDB_PATH):
-        raise HTTPException(status_code=404, detail=f"DuckDB file not found: {DUCKDB_PATH}")
     con = duckdb.connect("md:Climate Change (T2M)") 
     df = con.execute(f"SELECT * FROM {FEATURE_TABLE}").df()
     con.close()
