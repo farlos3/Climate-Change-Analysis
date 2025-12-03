@@ -3,6 +3,7 @@ import os
 import pandas as pd
 import requests
 import json
+import duckdb
 
 from datetime import datetime, timedelta
 from airflow import DAG
@@ -17,21 +18,21 @@ def fetch_power_api_task():
     """Fetch climate data from NASA POWER API"""
     from src.ingestion_power import fetch_power_daily_batch
     
-    print("🌍 Fetching climate data from NASA POWER API...")
+    print("Fetching climate data from NASA POWER API...")
     
     result = fetch_power_daily_batch(
         '/opt/airflow/src/nasa_daily_parameters.csv', 
         '/opt/airflow/data/raw/power_daily.parquet'
     )
     
-    print(f'✅ API DATA FETCHED: {result}')
+    print(f'API DATA FETCHED: {result}')
     return result
 
 def smart_load_raw_task():
     """Smart loading: auto-detect fresh start vs incremental update"""
     from src.etl_to_duckdb import smart_load_raw_to_duckdb
     
-    print("🧠 Smart loading: auto-detecting fresh start vs incremental update...")
+    print("Smart loading: auto-detecting fresh start vs incremental update...")
     
     result = smart_load_raw_to_duckdb(
         '/opt/airflow/data/raw/power_daily.parquet', 
@@ -40,14 +41,14 @@ def smart_load_raw_task():
     )
     
     if result['status'] == 'fresh_start':
-        print(f"🆕 FRESH START: Created new table with {result['total_rows']:,} rows")
-        print(f"   📅 Date range: {result['date_range']}")
+        print(f"FRESH START: Created new table with {result['total_rows']:,} rows")
+        print(f"   Date range: {result['date_range']}")
     elif result['status'] == 'incremental_update':
-        print(f"🔄 INCREMENTAL UPDATE: {result['total_rows_after']:,} total rows")
-        print(f"   ➕ Added: {result['new_rows_added']} | 🔄 Replaced: {result['overlap_rows_replaced']}")
-        print(f"   📅 New range: {result['new_data_range']}")
+        print(f"INCREMENTAL UPDATE: {result['total_rows_after']:,} total rows")
+        print(f"   Added: {result['new_rows_added']} | 🔄 Replaced: {result['overlap_rows_replaced']}")
+        print(f"   New range: {result['new_data_range']}")
     
-    print(f'✅ RAW DATA LOADED: {result["status"]}')
+    print(f'RAW DATA LOADED: {result["status"]}')
     return result
 
 def prepare_clean_data_task():
@@ -56,7 +57,7 @@ def prepare_clean_data_task():
     ทำ data cleaning และ preparation
     """
     from src.data_preparation import prepare_nasa_power_data
-    print("🧹 DATA PREPARATION: Processing raw data...")
+    print("DATA PREPARATION: Processing raw data...")
     raw_path = "/opt/airflow/data/raw/power_daily.parquet"
     output_clean_path = "/opt/airflow/data/prepared/climate_clean.parquet"
     # Always prepare new data, overwrite clean parquet
@@ -77,10 +78,10 @@ def prepare_clean_data_task():
         "final_rows": len(df_clean),
         "date_range": f"{df_clean[date_col].min().date()} to {df_clean[date_col].max().date()}",
     }
-    print("✅ DATA PREPARATION COMPLETED:")
-    print(f"   📊 Final rows: {result['final_rows']:,}")
-    print(f"   📅 Range: {result['date_range']}")
-    print(f"   🔧 Operation: {result['operation']}")
+    print("DATA PREPARATION COMPLETED:")
+    print(f"   Final rows: {result['final_rows']:,}")
+    print(f"   Range: {result['date_range']}")
+    print(f"   Operation: {result['operation']}")
     return result
 
 
@@ -90,21 +91,21 @@ def load_clean_to_duckdb_task():
     เฉพาะการ load ข้อมูลที่ prepare แล้ว
     """
     from src.etl_to_duckdb import load_prepared_to_duckdb_direct
-    print("📥 LOADING CLEAN DATA: Prepared parquet → DuckDB...")
+    print("LOADING CLEAN DATA: Prepared parquet → DuckDB...")
     result = load_prepared_to_duckdb_direct(
         prepared_parquet_path='/opt/airflow/data/prepared/climate_clean.parquet',
         duckdb_path='/opt/airflow/data/duckdb/climate.duckdb',
         table_name='climate_clean'
     )
-    print(f"✅ CLEAN DATA LOADED:")
-    print(f"   📊 Loaded: {result['loaded_rows']:,} rows")
-    print(f"   📅 Range: {result['data_range']}")
-    print(f"   📥 Operation: {result['operation']}")
+    print(f"CLEAN DATA LOADED:")
+    print(f"   Loaded: {result['loaded_rows']:,} rows")
+    print(f"   Range: {result['data_range']}")
+    print(f"   Operation: {result['operation']}")
     return result
 
 def feature_engineering_task():
     from src.feature_engineering import engineer_t2m_features_from_duckdb
-    print("🧑‍🔬 FEATURE ENGINEERING: Generating features from DuckDB...")
+    print("FEATURE ENGINEERING: Generating features from DuckDB...")
     duckdb_path = '/opt/airflow/data/duckdb/climate.duckdb'
     table_name = 'climate_clean'
     output_path = '/opt/airflow/data/prepared/feature_engineering_t2m.parquet'
@@ -113,38 +114,30 @@ def feature_engineering_task():
         table_name=table_name,
         output_path=output_path
     )
-    print(f"✅ FEATURE ENGINEERING COMPLETED: {df_fe.shape[0]:,} rows, {len(feature_cols)} features")
-    print(f"   📤 Saved to: {output_path}")
-    # --- Save features to DuckDB table ---
+    print(f"FEATURE ENGINEERING COMPLETED: {df_fe.shape[0]:,} rows, {len(feature_cols)} features")
+    print(f"   Saved to: {output_path}")
+    # --- Save features to DuckDB feature store table ---
     from src.etl_to_duckdb import load_features_to_duckdb
-    features_table_name = 'climate_clean'
+    feature_store_table_name = 'feature_store'
     duckdb_result = load_features_to_duckdb(
         features_file_path=output_path,
         duckdb_path=duckdb_path,
-        table_name=features_table_name
+        table_name=feature_store_table_name
     )
-    print(f"✅ Features saved to DuckDB table: {features_table_name}")
-    print(f"   📊 Loaded: {duckdb_result['loaded_rows']:,} rows")
-    print(f"   📅 Range: {duckdb_result['data_range']}")
+    print(f"Features saved to DuckDB feature store table: {feature_store_table_name}")
+    print(f"   Loaded: {duckdb_result['loaded_rows']:,} rows")
+    print(f"   Range: {duckdb_result['data_range']}")
     return output_path
 
 # Legacy wrapper สำหรับ backward compatibility
 def load_prepared_to_duckdb_task():
-    """Legacy wrapper - now uses new data preparation flow"""
     return load_clean_to_duckdb_task()
 
 def notify_backend_features_task(**context):
-    """
-    ให้ Airflow ยิงไปหา backend API บอกว่า
-    'เฮ้ feature ใหม่พร้อมแล้วนะ'
-    """
 
     backend_url = "http://fastapi:8000/ingest/features"
-    print(f"📡 Notifying backend at {backend_url}")
+    print(f"Notifying backend at {backend_url}")
     
-
-    # ดึงข้อมูลจาก DuckDB table climate_features
-    import duckdb
     duckdb_path = "/opt/airflow/data/duckdb/climate.duckdb"
     table_name = "climate_clean"
     con = duckdb.connect("md:Climate Change (T2M)") 

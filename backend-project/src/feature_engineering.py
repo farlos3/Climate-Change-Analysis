@@ -1,10 +1,8 @@
 import pandas as pd
 import numpy as np
 from typing import List, Tuple
+import duckdb
 
-# -----------------------------
-# Config
-# -----------------------------
 SELECTED_FEATURES = [
     # Soil Temperature
     "tsoil1", "tsoil2", "tsoil3", "tsoil4",
@@ -48,9 +46,7 @@ ROLLING_WINDOWS = [3, 7]
 LAG_LIST = list(range(1, 8))  # lag 1–7 วัน
 
 
-# -----------------------------
 # Base FE functions
-# -----------------------------
 def load_and_sort_data(input_path: str) -> pd.DataFrame:
     """
     โหลดข้อมูลจาก Parquet และ sort ตามวันที่ (date)
@@ -149,10 +145,7 @@ def add_rolling_features(
 
     return rolling_df
 
-
-# -----------------------------
 # Advanced FE function
-# -----------------------------
 def add_advanced_features(df_fe: pd.DataFrame) -> pd.DataFrame:
     """
     เพิ่ม advanced features ตาม notebook:
@@ -305,7 +298,6 @@ def add_advanced_features(df_fe: pd.DataFrame) -> pd.DataFrame:
         advanced_lag_df = pd.DataFrame(index=df_fe.index)
         print("   - No advanced lag features added")
 
-    # Combine all advanced features
     df_advanced = pd.concat([
         df_fe,
         volatility_df,
@@ -316,10 +308,8 @@ def add_advanced_features(df_fe: pd.DataFrame) -> pd.DataFrame:
         advanced_lag_df,
     ], axis=1)
 
-    # Remove rows with NaN values (due to rolling windows and lags)
     df_advanced = df_advanced.dropna().reset_index(drop=True)
 
-    # Summary (เหมือนใน notebook)
     feature_categories = {
         "Original": len(df_fe.columns),
         "Volatility": len(volatility_df.columns),
@@ -334,57 +324,24 @@ def add_advanced_features(df_fe: pd.DataFrame) -> pd.DataFrame:
 
     return df_advanced
 
-# -----------------------------
-# main pipeline: สำหรับ predict
-# -----------------------------
 def engineer_t2m_features_for_predict(
     input_path: str,
     output_path: str,
     lags: List[int] = None,
     windows: List[int] = None,
 ) -> Tuple[pd.DataFrame, List[str]]:
-    """
-    Feature Engineering pipeline สำหรับ **เตรียมข้อมูลตอน predict เท่านั้น**
 
-    Flow:
-      1) โหลดและ sort ข้อมูลตาม date
-      2) เลือก base_features จาก SELECTED_FEATURES ที่มีอยู่จริง
-      3) สร้าง df_sel = [date] + base_features
-      4) สร้าง seasonal features (month_sin/cos, doy_sin/cos)
-      5) สร้าง lag features สำหรับ base_features (ยกเว้น month)
-      6) สร้าง rolling features (mean, std) สำหรับ ROLLING_COLS และ windows
-      7) รวมทั้งหมดเป็น df_fe แล้ว dropna
-      8) สร้าง advanced features เพิ่ม (volatility, patterns, interactions ฯลฯ)
-      9) dropna อีกครั้ง แล้วเซฟเป็น CSV
-
-    return:
-        df_final      - DataFrame หลังทำ feature engineering ทั้งหมด
-        feature_cols  - ชื่อคอลัมน์ที่ใช้เป็น feature (ไม่รวม 'date')
-    """
     if lags is None:
         lags = LAG_LIST
     if windows is None:
         windows = ROLLING_WINDOWS
 
-    # 1) โหลดและ sort
     df = load_and_sort_data(input_path)
-
-    # 2) base features
     base_features = select_base_features(df, SELECTED_FEATURES)
-
-    # 3) df_sel (ไม่มี target)
     df_sel = build_base_frame(df, base_features)
-
-    # 4) seasonal
     seasonal_df = add_seasonal_features(df_sel)
-
-    # 5) lag features
     lag_df = add_lag_features(df_sel, base_features, lags=lags)
-
-    # 6) rolling features
     rolling_df = add_rolling_features(df_sel, rolling_cols=ROLLING_COLS, windows=windows)
-
-    # 7) รวม base+seasonal+lag+rolling
     df_fe = pd.concat([
         df_sel,
         seasonal_df,
@@ -392,17 +349,12 @@ def engineer_t2m_features_for_predict(
         rolling_df,
     ], axis=1)
 
-    # ลบ NaN จาก base lag/rolling ชุดแรก
     df_fe = df_fe.dropna().reset_index(drop=True)
-
-    # 8) Advanced features (ใช้ df_fe ที่สะอาดแล้ว)
     df_final = add_advanced_features(df_fe)
 
-    # 9) feature columns = ทุกคอลัมน์ตัวเลขที่ไม่ใช่ date
     num_cols = df_final.select_dtypes(include=[np.number]).columns.tolist()
     feature_cols = [c for c in num_cols if c != "date"]
 
-    # เซฟออกเป็น Parquet
     df_final.to_parquet(output_path, index=False)
 
     return df_final, feature_cols
@@ -417,7 +369,7 @@ def engineer_t2m_features_from_duckdb(
     """
     Feature Engineering pipeline โดยดึงข้อมูลจาก DuckDB table โดยตรง
     """
-    import duckdb
+    
     con = duckdb.connect("md:Climate Change (T2M)")
     df = con.execute(f"SELECT * FROM {table_name}").df()
     con.close()

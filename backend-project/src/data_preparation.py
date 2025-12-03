@@ -3,6 +3,7 @@ import numpy as np
 from typing import List, Tuple
 import os
 from datetime import timedelta
+import duckdb
 
 MISSING_FLAGS = [-999, -999.0, -9999, -99, -99.0]
 
@@ -234,9 +235,7 @@ def prepare_nasa_power_data_from_duckdb(
     output_path: str,
     # horizon: int = 7
 ) -> pd.DataFrame:
-
-    import duckdb
-    
+  
     print(f"📤 Loading raw data from DuckDB table: {table_name}")
     con = duckdb.connect("md:Climate Change (T2M)") 
     raw_df = con.execute(f"SELECT * FROM {table_name}").df()
@@ -268,22 +267,8 @@ def load_and_normalize_columns_from_df(df: pd.DataFrame) -> pd.DataFrame:
 
 # Wrapper สำหรับ Airflow pipeline (fresh preparation)
 def prepare_climate_data(raw_parquet_path: str, output_parquet_path: str, quality_checks: bool = True):
-    """
-    Wrapper สำหรับ pipeline ให้เรียกใช้งานเหมือนเดิม
-    """
     return prepare_nasa_power_data(
         input_path=raw_parquet_path,
         output_path=output_parquet_path,
         # horizon=7
         )
-
-# if __name__ == "__main__":
-    
-#     INPUT_PATH = "backend-project/airflow/data/raw/power_daily1.parquet"
-#     OUTPUT_PATH = "power_daily_prepared.parquet"
-
-#     df_prepared = prepare_nasa_power_data(
-#         INPUT_PATH,
-#         OUTPUT_PATH,
-#         # horizon=7
-#     )
