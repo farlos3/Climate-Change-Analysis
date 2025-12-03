@@ -6,9 +6,9 @@ from datetime import timedelta
 
 # Paths for Airflow container/production
 MODEL_PATHS = {
-    "lightgbm": "/opt/airflow/models/LightGBM_Multi_T2M_Model.joblib",
-    "xgboost": "/opt/airflow/models/Xgboost_Multi_T2M_Model.joblib",
-    "randomforest": "/opt/airflow/models/RandomForest_Multi_T2M_Model.joblib"
+    "lightgbm": "/opt/airflow/data/models/LightGBM_Multi_T2M_Model.joblib",
+    "xgboost": "/opt/airflow/data/models/Xgboost_Multi_T2M_Model.joblib",
+    "randomforest": "/opt/airflow/data/models/RandomForest_Multi_T2M_Model.joblib"
 }
 FEATURE_SELECTION_PATH = "/opt/airflow/data/t2m_selected_features.json"
 

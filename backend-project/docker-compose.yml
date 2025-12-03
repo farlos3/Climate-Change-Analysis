@@ -27,7 +27,7 @@ services:
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./src:/opt/airflow/src
-      - ./app/models:/opt/airflow/models
+      - ./airflow/data/models:/opt/airflow/models
       - ./airflow/data:/opt/airflow/data
     ports:
       - "8090:8080"
