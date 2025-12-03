@@ -42,14 +42,3 @@ services:
       - PYTHONPATH=/opt/airflow:/opt/airflow/src
       - MOTHERDUCK_TOKEN=${MOTHERDUCK_TOKEN}
     command: standalone
-
-  fastapi:
-    build: ./app
-    container_name: fastapi
-    volumes:
-      - ./airflow/data:/app/data
-      - ./src:/app/src
-      - ./airflow/data:/opt/airflow/data
-      - ./app/models:/opt/app/models
-    ports:
-      - "8000:8000"
