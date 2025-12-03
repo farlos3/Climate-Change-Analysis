@@ -37,19 +37,13 @@ def update_actual_in_forecast_table(duckdb_path, table_name="forecast_store"):
 
 def save_forecast_to_duckdb(prediction_result, duckdb_path, table_name="forecast_store"):
 
-    # สร้าง DataFrame ตาม schema ใหม่
-    # run_date: วันที่รัน pipeline
-    # target_date: วันที่ที่พยากรณ์
-    # horizon_day: จำนวนวันล่วงหน้าที่พยากรณ์ (target_date - run_date)
-    # forecast: ค่าที่โมเดลพยากรณ์
-    # actual: ค่าจริง (เติมทีหลัง)
     forecast_rows = []
-    # ดึงวันล่าสุดจาก climate_clean
+
     con = duckdb.connect(duckdb_path)
     last_date_row = con.execute("SELECT MAX(date) as last_date FROM climate_clean").fetchone()
     last_date = last_date_row[0] if last_date_row else None
 
-    # horizon_day fix เป็น 1-7
+    # horizon_day fix is 1-7
     forecast_rows = []
     import datetime
     base_date = pd.to_datetime(last_date)
@@ -57,21 +51,21 @@ def save_forecast_to_duckdb(prediction_result, duckdb_path, table_name="forecast
         for idx, row in enumerate(rows):
             horizon_day = (idx % 7) + 1
             target_date = (base_date + datetime.timedelta(days=horizon_day)).strftime('%Y-%m-%d')
-            # รองรับ key หลายแบบสำหรับค่าทำนาย
+
             forecast_value = None
             for key in ['forecast', 'T2M', 'prediction', 'value', 'y_pred', 'output']:
                 if key in row:
                     forecast_value = row[key]
                     break
-            # fallback: ถ้าไม่เจอ key ใดเลย ให้ใช้ค่าตัวเลขตัวแรกใน row
+
             if forecast_value is None:
                 for v in row.values():
                     if isinstance(v, (int, float)):
                         forecast_value = v
                         break
-            # debug log ตัวอย่าง row ถ้า forecast_value ยังเป็น None
+            # debug log example row if forecast_value is still None
             if forecast_value is None:
-                print(f"[DEBUG] ไม่พบค่าทำนายใน row: {row}")
+                print(f"[DEBUG] Forecast value not found in row: {row}")
             forecast_rows.append({
                 'date': last_date,
                 'target_date': target_date,
@@ -82,7 +76,7 @@ def save_forecast_to_duckdb(prediction_result, duckdb_path, table_name="forecast
             })
     df_forecast = pd.DataFrame(forecast_rows)
 
-    # เติม actual จาก climate_clean:T2M โดย match target_date
+    # Fill actual from climate_clean:T2M by matching target_date
     if 'target_date' in df_forecast.columns:
         target_dates = df_forecast['target_date'].dropna().unique().tolist()
         if target_dates:
@@ -94,9 +88,9 @@ def save_forecast_to_duckdb(prediction_result, duckdb_path, table_name="forecast
 
     # Register DataFrame as temp table
     con.register('df_forecast', df_forecast)
-    # Create table if not exists (ตาม schemaใหม่)
+    # Create table if not exists (according to new schema)
     con.execute(f"CREATE TABLE IF NOT EXISTS {table_name} (date DATE, target_date DATE, horizon_day INTEGER, forecast DOUBLE, actual DOUBLE, model VARCHAR)")
-    # Upsert: ลบเฉพาะแถวที่ date, target_date, model ซ้ำ แล้ว insert ใหม่
+    # Upsert: delete only rows with duplicate date, target_date, model then insert new
     for _, row in df_forecast.iterrows():
         con.execute(f"DELETE FROM {table_name} WHERE date = '{row['date']}' AND target_date = '{row['target_date']}' AND model = '{row['model']}'")
     con.execute(f"INSERT INTO {table_name} SELECT date, target_date, horizon_day, forecast, actual, model FROM df_forecast")

@@ -99,13 +99,13 @@ def handle_missing_flags_and_dates(df: pd.DataFrame) -> pd.DataFrame:
     df['date'] = pd.to_datetime(df['date'])
     df = df.sort_values("date")
 
-    # หา 3 วันที่ล่าสุด (เหมือนใช้ nlargest(3))
+    # Find the latest 3 dates (similar to nlargest(3))
     last3 = df['date'].nlargest(3).tolist()
     
-    # ลบ 3 วันที่ล่าสุดออก
+    # Remove the latest 3 dates
     df = df[~df["date"].isin(last3)]
 
-    # แทนค่าที่เป็น missing flag ด้วย mean ของคอลัมน์
+    # Replace missing flag values with column mean
     for col in df.select_dtypes(include=['float64', 'int64']).columns:
         mask = df[col].isin(MISSING_FLAGS)
         if mask.any():

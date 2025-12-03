@@ -9,7 +9,6 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-# เพิ่ม src path เข้า Python path
 sys.path.append('/opt/airflow')
 sys.path.append('/opt/airflow/src')
 
@@ -29,7 +28,6 @@ def fetch_power_api_task():
     return result
 
 def smart_load_raw_task():
-    """Smart loading: auto-detect fresh start vs incremental update"""
     from src.etl_to_duckdb import smart_load_raw_to_duckdb
     
     print("Smart loading: auto-detecting fresh start vs incremental update...")
@@ -52,21 +50,19 @@ def smart_load_raw_task():
     return result
 
 def prepare_clean_data_task():
-    """
-    Data preparation: Raw parquet → Clean parquet
-    ทำ data cleaning และ preparation
-    """
-    from src.data_preparation import prepare_nasa_power_data
+
+    from src.data_preparation import prepare_nasa_power_data_from_duckdb
     print("DATA PREPARATION: Processing raw data...")
-    raw_path = "/opt/airflow/data/raw/power_daily.parquet"
+
     output_clean_path = "/opt/airflow/data/prepared/climate_clean.parquet"
+    
     # Always prepare new data, overwrite clean parquet
-    df_clean = prepare_nasa_power_data(
-        raw_parquet_path=raw_path,
-        output_parquet_path=output_clean_path,
-        quality_checks=True,
+    df_clean = prepare_nasa_power_data_from_duckdb(
+        duckdb_path="md:Climate Change (T2M)",
+        table_name="climate_raw",
+        output_path=output_clean_path,
     )
-    # ให้แน่ใจว่า column วันที่เป็น datetime และชื่อ 'DATE'
+
     if "DATE" in df_clean.columns:
         date_col = "DATE"
     else:
@@ -111,7 +107,7 @@ def feature_engineering_task():
     )
     print(f"FEATURE ENGINEERING COMPLETED: {df_fe.shape[0]:,} rows, {len(feature_cols)} features")
     print(f"   Saved to: {output_path}")
-    # --- Save features to DuckDB feature store table ---
+
     from src.etl_to_duckdb import load_features_to_duckdb
     feature_store_table_name = 'feature_store'
     duckdb_result = load_features_to_duckdb(
@@ -124,7 +120,6 @@ def feature_engineering_task():
     print(f"   Range: {duckdb_result['data_range']}")
     return output_path
 
-# Legacy wrapper สำหรับ backward compatibility
 def load_prepared_to_duckdb():
     return load_clean_to_duckdb()
 

@@ -16,15 +16,15 @@ def fetch_power_daily_batch(param_file: str, output_parquet_path: str):
     params_df = pd.read_csv(param_file)
     valid_params = params_df["parameter"].tolist()
 
-    # วันสุดท้าย = วันนี้
+    # last day = today
     end_date = datetime.datetime.today().strftime("%Y%m%d")
 
     all_param_data = {}
 
-    # Loop ขอ API ทีละ 20 parameters
+    # Loop API calls in batches of 20 parameters
     for batch_idx, batch_params in enumerate(chunk_list(valid_params, 20), start=1):
 
-        # ถ้ามีพารามิเตอร์ที่เริ่มหลังปี 2001 → ใช้ start date ใหม่
+        # If any parameter starts after 2001 → use new start date
         has_after_2001 = any(p in PARAMETERS_AFTER_2001 for p in batch_params)
         start_date = AFTER_2001_START if has_after_2001 else DEFAULT_START
 
@@ -57,7 +57,6 @@ def fetch_power_daily_batch(param_file: str, output_parquet_path: str):
             data = r.json()
             records = data["properties"]["parameter"]
 
-            # รวมผลใน dictionary
             for p_name, series_dict in records.items():
                 all_param_data[p_name] = series_dict
 

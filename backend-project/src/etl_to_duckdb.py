@@ -60,11 +60,6 @@ def load_prepared_to_duckdb_direct(
     duckdb_path: str, 
     table_name: str = "climate_clean"
 ) -> dict:
-    """
-    Simple loader: อ่าน prepared parquet → DuckDB table
-    ไม่ทำ data cleaning หรือ feature engineering อะไรเลย
-    เพียงแค่ load ข้อมูลที่ prepared แล้ว
-    """
     
     if not os.path.exists(prepared_parquet_path):
         raise FileNotFoundError(f"Prepared parquet not found: {prepared_parquet_path}")

@@ -6,7 +6,7 @@ POWER_URL = "https://power.larc.nasa.gov/api/temporal/daily/point"
 DEFAULT_START = "19810101"
 AFTER_2001_START = "20010101"
 
-# parameters ที่เริ่มมีข้อมูลหลังปี 2001
+# parameters from 2001
 PARAMETERS_AFTER_2001 = [
     "CLRSKY_SFC_PAR_DIRH",
     "CLRSKY_SFC_PAR_DIFF",
