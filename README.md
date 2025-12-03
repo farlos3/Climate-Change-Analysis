@@ -1,5 +1,18 @@
 # Climate Change Analysis Project
 
+<p align="left">
+   <img src="https://img.shields.io/badge/Python-3.11+-blue?logo=python" alt="Python"/>
+   <img src="https://img.shields.io/badge/FastAPI-0.104+-0ba37f?logo=fastapi" alt="FastAPI"/>
+   <img src="https://img.shields.io/badge/Apache%20Airflow-2+-017CEE?logo=apacheairflow" alt="Airflow"/>
+   <img src="https://img.shields.io/badge/DuckDB-0.9+-f2c811?logo=duckdb" alt="DuckDB"/>
+   <img src="https://img.shields.io/badge/MotherDuck-Cloud-orange?logo=data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjRkZGIiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEwIi8+PC9zdmc+" alt="MotherDuck"/>
+   <img src="https://img.shields.io/badge/Docker-Compose-blue?logo=docker" alt="Docker Compose"/>
+   <img src="https://img.shields.io/badge/LightGBM-3+-9ACD32?logo=lightgbm" alt="LightGBM"/>
+   <img src="https://img.shields.io/badge/XGBoost-1.7+-F7B529?logo=xgboost" alt="XGBoost"/>
+   <img src="https://img.shields.io/badge/RandomForest-Scikit--Learn-F7931E?logo=scikit-learn" alt="RandomForest"/>
+   <img src="https://img.shields.io/badge/LSTM-TensorFlow-orange?logo=tensorflow" alt="LSTM"/>
+</p>
+
 ![Data Pipeline](data%20pipeline.png)
 
 ## Overview
