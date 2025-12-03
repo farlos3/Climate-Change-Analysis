@@ -1,6 +1,6 @@
 # Climate Change Analysis Project
 
-![Data Pipeline](backend-project/airflow/data-pipeline.png)
+![Data Pipeline](data-pipeline.png)
 
 ## Overview
 This project analyzes climate data and forecasts temperature and other environmental parameters using machine learning models. It includes data engineering, feature selection, model training, and deployment via APIs and orchestration tools.
