@@ -16,10 +16,7 @@ def run_prediction(features_json):
     return prediction_result
 
 def update_actual_in_forecast_table(duckdb_path, table_name="forecast_store"):
-    """
-    Update actual values in forecast table using climate_clean (where actual data is available).
-    Match by target_date and update actual for all models.
-    """
+
     con = duckdb.connect(duckdb_path)
     # Get all target_dates in forecast table
     target_dates = con.execute(f"SELECT DISTINCT target_date FROM {table_name}").fetchall()
@@ -95,6 +92,9 @@ def save_forecast_to_duckdb(prediction_result, duckdb_path, table_name="forecast
         con.execute(f"DELETE FROM {table_name} WHERE date = '{row['date']}' AND target_date = '{row['target_date']}' AND model = '{row['model']}'")
     con.execute(f"INSERT INTO {table_name} SELECT date, target_date, horizon_day, forecast, actual, model FROM df_forecast")
     con.close()
+
     print(f"Saved/updated forecast to DuckDB table: {table_name} ({len(df_forecast)} rows)")
+    # Automatically update actual values after saving forecast
+    update_actual_in_forecast_table(duckdb_path, table_name)
     return df_forecast
 
