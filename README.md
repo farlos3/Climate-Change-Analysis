@@ -1,4 +1,4 @@
-# Climate Change Analysis Project
+# Climate Change Analysis
 
 <p align="left">
    <img src="https://img.shields.io/badge/Python-3.11+-blue?logo=python" alt="Python"/>
