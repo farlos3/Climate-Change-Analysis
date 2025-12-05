@@ -164,7 +164,7 @@ with DAG(
     dag_id="climate_pipeline",
     default_args=default_args,
     description="Production climate data pipeline with smart incremental updates",
-    schedule="@daily",  # Production: daily schedule
+    schedule="@daily",  
     catchup=False,
     tags=["climate", "nasa", "production", "demo"],
     max_active_runs=1,
